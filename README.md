@@ -1,57 +1,75 @@
-# GigFlow
+# GigFlow Backend
 
-Mini freelance marketplace where any user can post gigs and bid on others. Hiring is atomic and role-free: ownership and permissions are derived from data, not roles.
+A Node.js/Express backend for a freelance marketplace with secure hiring logic and real-time notifications.
 
-## Stack
-- Frontend: React (Vite), React Router, Redux Toolkit, Tailwind CSS, Axios, Clerk
-- Backend: Node.js, Express, MongoDB (Mongoose), Clerk JWT auth, Socket.io (optional notifications)
+## 🚀 Tech Stack
+- Node.js + Express.js
+- MongoDB + Mongoose
+- Socket.io (Real-time notifications)
+- Clerk (Authentication)
+- JWT with HttpOnly cookies
 
-## Architecture
-- Separation of concerns: Express controllers for business logic, Mongoose models for persistence, React pages/hooks for data fetching and state, UI primitives in `client/src/components/ui/`, domain components in `client/src/components/domain/`.
-- Backend is the source of truth: frontend derives capabilities from gig ownership/status and backend responses; no role flags on users.
+## 🎯 Key Features
+- ✅ Secure user authentication with Clerk
+- ✅ CRUD operations for Gigs (Jobs)
+- ✅ Bidding system for Freelancers
+- ✅ **Atomic hiring logic with MongoDB Transactions** (Bonus 1)
+- ✅ **Real-time Socket.io notifications** (Bonus 2)
+- ✅ Race condition prevention
+- ✅ Comprehensive error handling
 
-## Authentication
-- Clerk handles identity and session tokens. Backend verifies Clerk JWT (Bearer token) and maps `clerkUserId` to MongoDB `User` documents. HttpOnly cookies plus Authorization header keep requests secure. Authorization (ownership checks, unique bid constraints, hiring) remains backend-enforced.
+## 🔧 Setup Instructions
 
-## Core Business Logic
-- Gigs: create/list (public list shows open gigs). Detail fetch populates owner `{ id, name, email }`.
-- Bids: one bid per user per gig (unique index). Owners only can view bids for their gig.
-- Hiring: PATCH `/api/bids/:bidId/hire` runs a MongoDB transaction to (1) mark gig assigned, (2) mark selected bid hired, (3) reject all other pending bids. Prevents race conditions; optional socket notification to hired freelancer.
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Copy `.env.example` to `.env`
+4. Fill in your environment variables (see below)
+5. Start MongoDB (local or Atlas)
+6. Run: `npm run dev`
 
-## Frontend Ownership Handling
-- No roles stored on users. Ownership inferred by comparing `gig.owner.id` to the authenticated user id; bid visibility/actions depend on backend responses. Disabled states follow gig status and backend truth (e.g., gig assigned, duplicate bid conflict).
+## 🌍 Environment Variables
 
-## API Surface
-- GET `/health` — health check
-- GET `/api/gigs` — list open gigs (optional `search` query)
-- GET `/api/gigs/:id` — gig detail (public)
-- POST `/api/gigs` — create gig (auth)
-- POST `/api/bids` — create bid (auth)
-- GET `/api/bids/:gigId` — list bids for gig (owner only)
-- PATCH `/api/bids/:bidId/hire` — hire freelancer (owner only, atomic)
+See `.env.example` for required variables:
+- `MONGODB_URI` - MongoDB connection string
+- `CLERK_SECRET_KEY` - Clerk authentication secret
+- `PORT` - Server port (default: 5000)
+- `CLIENT_URL` - Frontend URL for CORS
 
-## Running Locally
-Backend
-```bash
-cd server
-npm install
-cp .env.example .env
-# set MONGODB_URI, CLERK_SECRET_KEY
-npm run dev
+## 📡 API Endpoints
+
+### Authentication
+- `GET /api/auth/me` - Get current user
+
+### Gigs
+- `GET /api/gigs` - List all open gigs (supports search)
+- `POST /api/gigs` - Create new gig (auth required)
+- `GET /api/gigs/:id` - Get gig details
+
+### Bids
+- `POST /api/bids` - Submit bid (auth required)
+- `GET /api/bids/:gigId` - Get all bids for gig (owner only)
+- `PATCH /api/bids/:bidId/hire` - **Hire freelancer** (uses transactions)
+
+## 🏆 Bonus Features Implemented
+
+### Bonus 1: Transactional Integrity
+Uses MongoDB transactions in the hire endpoint to ensure:
+- Only ONE freelancer can be hired per gig
+- All operations are atomic (gig status update, bid status updates)
+- Race conditions are prevented
+
+### Bonus 2: Real-time Notifications
+Socket.io integration provides instant notifications when:
+- Freelancer gets hired
+- No page refresh required
+
+## 📁 Project Structure
 ```
-
-Frontend
-```bash
-cd client
-npm install
-cp .env.example .env
-# set VITE_CLERK_PUBLISHABLE_KEY and VITE_API_BASE_URL (e.g., http://localhost:5000)
-npm run dev
+src/
+├── controllers/    # Business logic
+├── models/        # MongoDB schemas
+├── routes/        # API routes
+├── middleware/    # Auth & validation
+├── utils/         # Socket.io utility
+└── config/        # Database config
 ```
-
-## Tradeoffs & Future Improvements
-- Pagination and filtering for gigs/bids to reduce payloads.
-- RTK Query or SWR for caching and request deduping.
-- E2E and load tests around hiring transaction paths.
-- Rate limiting and audit logging on auth-sensitive endpoints.
-- More robust error surfaces and optimistic UI for bid submission/hiring.
